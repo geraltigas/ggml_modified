@@ -10643,7 +10643,9 @@ static void ggml_compute_forward_mul_mat(
 #endif
 
     if (params->type == GGML_TASK_TYPE_INIT) {
-        if (ith != 0) {
+//        add_count("init_call_count");
+        profile("mul_mat_init",
+                       if (ith != 0) {
             return;
         }
         if (src1->type != vec_dot_type) {
@@ -10662,14 +10664,20 @@ static void ggml_compute_forward_mul_mat(
                 }
             }
         }
+               );
+
 
         return;
     }
 
     if (params->type == GGML_TASK_TYPE_FINALIZE) {
+//        add_count("finalize_call_count");
         return;
     }
 
+//    add_count("compute_call_count");
+
+profile("mul_mat_compute",
     const void * wdata    = (src1->type == vec_dot_type) ? src1->data : params->wdata;
     const size_t row_size = ggml_row_size(vec_dot_type, ne10);
 
@@ -10765,6 +10773,7 @@ static void ggml_compute_forward_mul_mat(
             }
         }
     }
+    );
 }
 
 // ggml_compute_forward_mul_mat_id
