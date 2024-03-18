@@ -10732,6 +10732,30 @@ profile("mul_mat_compute_before_loop",
     // 16 * 2, accounting for mmla kernels
     static float tmp[32];
 )
+
+// ir110
+// ir111
+// ir010
+// ir011
+// blck_0
+// blck_1
+// nrc
+// ne00
+// ne12
+// ne1
+// ne11
+// nb01
+// nb11
+// nb12
+// nb13
+// nb1
+// nb2
+// nb3
+// r3
+// r2
+// src0->data
+// wdata
+
 profile("mul_mat_compute_loop",
     for (int64_t iir1 = ir110; iir1 < ir111; iir1 += blck_1) {
         for (int64_t iir0 = ir010; iir0 < ir011; iir0 += blck_0) {
