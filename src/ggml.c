@@ -10742,95 +10742,14 @@ static void ggml_compute_forward_mul_mat(
     GGML_ASSERT(nb1 <= nb2);
     GGML_ASSERT(nb2 <= nb3);
 
-
     GGML_ASSERT(ne02 == 1);
     GGML_ASSERT(ne03 == 1);
 //    GGML_ASSERT(ne12 == 1);
     GGML_ASSERT(ne13 == 1);
 
-
     // broadcast factors
-    const int64_t r2 = ne12 / ne02;
-    const int64_t r3 = ne13 / ne03;
-
-    // nb01 >= nb00 - src0 is not transposed
-    //   compute by src0 rows
-
-#if defined(GGML_USE_CLBLAST)
-                                                                                                                            if (ggml_cl_can_mul_mat(src0, src1, dst)) {
-        if (params->ith == 0 && params->type == GGML_TASK_TYPE_COMPUTE) {
-            ggml_cl_mul_mat(src0, src1, dst, params->wdata, params->wsize);
-        }
-        return;
-    }
-#endif
-
-#if defined(GGML_USE_ACCELERATE) || defined(GGML_USE_OPENBLAS)
-                                                                                                                            if (ggml_compute_forward_mul_mat_use_blas(dst)) {
-        const int64_t ne_plane      = ne01*ne00;
-        const size_t  desired_wsize = ne13*ne12*ne_plane*sizeof(float);
-        UNUSED(desired_wsize);
-
-        if (params->type == GGML_TASK_TYPE_INIT) {
-            if (type != GGML_TYPE_F32) {
-                assert(params->wsize >= desired_wsize);
-                // parallelize by src0 rows
-                for (int64_t i13 = 0; i13 < ne13; i13++) {
-                    for (int64_t i12 = 0; i12 < ne12; i12++) {
-                        // broadcast src0 into src1 across 2nd,3rd dimension
-                        const int64_t i03 = i13/r3;
-                        const int64_t i02 = i12/r2;
-
-                        const void           *       x        = (char *)  src0->data    + i02*nb02          + i03*nb03;
-                              float          * const wdata    = (float *) params->wdata + i13*ne12*ne_plane + i12*ne_plane;
-                              ggml_to_float_t  const to_float = type_traits[type].to_float;
-
-                        for (int64_t i01 = ith; i01 < ne01; i01 += nth) {
-                            to_float((const char *) x + i01*nb01, wdata + i01*ne00, ne00);
-                        }
-                    }
-                }
-            }
-            return;
-        }
-
-        if (params->type == GGML_TASK_TYPE_FINALIZE) {
-            return;
-        }
-
-        // perform sgemm, parallelization controlled by blas lib
-        if (ith != 0) {
-            return;
-        }
-
-        //const int64_t tgemm0 = ggml_perf_time_us();
-        for (int64_t i13 = 0; i13 < ne13; i13++) {
-            for (int64_t i12 = 0; i12 < ne12; i12++) {
-                const int64_t i03 = i13/r3;
-                const int64_t i02 = i12/r2;
-
-                const void  * x = (char *)            src0->data + i02*nb02 + i03*nb03;
-                const float * y = (float *) ((char *) src1->data + i12*nb12 + i13*nb13);
-                      float * d = (float *) ((char *)  dst->data + i12*nb2  + i13*nb3);
-
-                if (type != GGML_TYPE_F32) {
-                    x = (float *) params->wdata + i13*ne12*ne_plane + i12*ne_plane;
-                }
-
-                cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasTrans,
-                          ne1, ne01, ne10,
-                         1.0f,    y, ne10,
-                                  x, ne00,
-                         0.0f,    d, ne01);
-            }
-        }
-        //printf("cblas_sgemm = %.3f ms, %lld flops\n", (ggml_perf_time_us() - tgemm0)/1000.0, ne13*ne12*ne1*ne01*ne10*2);
-
-        //printf("CBLAS = %f ms, %d x %d x %d x %d\n", (ggml_perf_time_us() - t0)/1000.0, ne0, ne1, ne2, ne3);
-
-        return;
-    }
-#endif
+    const int64_t r2 = ne12;
+    const int64_t r3 = 1;
 
     if (params->type == GGML_TASK_TYPE_INIT) {
         if (ith != 0) {
@@ -10856,28 +10775,23 @@ static void ggml_compute_forward_mul_mat(
         return;
     }
 
-    if (params->type == GGML_TASK_TYPE_FINALIZE) {
-        return;
-    }
-
-    const void *wdata = (src1->type == vec_dot_type) ? src1->data : params->wdata;
+    const void *wdata = params->wdata;
     const size_t row_size = ggml_row_size(vec_dot_type, ne10);
 
     const int64_t nr0 = ne01;          // src0 rows
-    const int64_t nr1 = ne1 * ne12 * ne13; // src1 rows
-
-    //printf("nr0 = %lld, nr1 = %lld\n", nr0, nr1);
-
-    // distribute the thread work across the inner or outer loop based on which one is larger
+    const int64_t nr1 = ne11 * ne12; // src1 rows
 
     const int64_t nth0 = nr0 > nr1 ? nth : 1; // parallelize by src0 rows
     const int64_t nth1 = nr0 > nr1 ? 1 : nth; // parallelize by src1 rows
 
-    const int64_t ith0 = ith % nth0;
-    const int64_t ith1 = ith / nth0;
+    GGML_ASSERT(nth0 == 1);
+    GGML_ASSERT(nth1 == 1);
 
-    const int64_t dr0 = (nr0 + nth0 - 1) / nth0;
-    const int64_t dr1 = (nr1 + nth1 - 1) / nth1;
+    const int64_t ith0 = ith;
+    const int64_t ith1 = ith;
+
+    const int64_t dr0 = nr0;
+    const int64_t dr1 = nr1;
 
     const int64_t ir010 = dr0 * ith0;
     const int64_t ir011 = MIN(ir010 + dr0, nr0);
