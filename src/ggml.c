@@ -10742,10 +10742,12 @@ static void ggml_compute_forward_mul_mat(
     GGML_ASSERT(nb1 <= nb2);
     GGML_ASSERT(nb2 <= nb3);
 
+
     GGML_ASSERT(ne02 == 1);
     GGML_ASSERT(ne03 == 1);
 //    GGML_ASSERT(ne12 == 1);
     GGML_ASSERT(ne13 == 1);
+
 
     // broadcast factors
     const int64_t r2 = ne12 / ne02;
