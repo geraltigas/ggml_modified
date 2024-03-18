@@ -10644,8 +10644,8 @@ static void ggml_compute_forward_mul_mat(
 
     if (params->type == GGML_TASK_TYPE_INIT) {
 //        add_count("init_call_count");
-        profile("mul_mat_init",
-                       if (ith != 0) {
+profile("mmstage_init",
+        if (ith != 0) {
             return;
         }
         if (src1->type != vec_dot_type) {
@@ -10664,9 +10664,7 @@ static void ggml_compute_forward_mul_mat(
                 }
             }
         }
-               );
-
-
+)
         return;
     }
 
@@ -10677,7 +10675,9 @@ static void ggml_compute_forward_mul_mat(
 
 //    add_count("compute_call_count");
 
-profile("mul_mat_compute",
+profile("mmstage_compute",
+
+profile("mul_mat_compute_before_loop",
     const void * wdata    = (src1->type == vec_dot_type) ? src1->data : params->wdata;
     const size_t row_size = ggml_row_size(vec_dot_type, ne10);
 
@@ -10730,8 +10730,9 @@ profile("mul_mat_compute",
 
     // attempt to reduce false-sharing (does not seem to make a difference)
     // 16 * 2, accounting for mmla kernels
-    float tmp[32];
-
+    static float tmp[32];
+)
+profile("mul_mat_compute_loop",
     for (int64_t iir1 = ir110; iir1 < ir111; iir1 += blck_1) {
         for (int64_t iir0 = ir010; iir0 < ir011; iir0 += blck_0) {
             for (int64_t ir1 = iir1; ir1 < iir1 + blck_1 && ir1 < ir111; ir1 += nrc) {
@@ -10773,7 +10774,8 @@ profile("mul_mat_compute",
             }
         }
     }
-    );
+)
+)
 }
 
 // ggml_compute_forward_mul_mat_id
