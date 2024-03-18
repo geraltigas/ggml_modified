@@ -10716,30 +10716,9 @@ static void ggml_compute_forward_mul_mat(
     GGML_TENSOR_BINARY_OP_LOCALS
 
     const enum ggml_type type = src0->type;
-
     ggml_vec_dot_t const vec_dot = type_traits[type].vec_dot;
     enum ggml_type const vec_dot_type = type_traits[type].vec_dot_type;
     ggml_from_float_t const from_float_to_vec_dot = type_traits[vec_dot_type].from_float;
-
-    GGML_ASSERT(ne0 == ne01);
-    GGML_ASSERT(ne1 == ne11);
-    GGML_ASSERT(ne2 == ne12);
-    GGML_ASSERT(ne3 == ne13);
-
-    // we don't support permuted src0 or src1
-    GGML_ASSERT(nb00 == ggml_type_size(type));
-    GGML_ASSERT(nb10 == ggml_type_size(src1->type));
-
-    // dst cannot be transposed or permuted
-    GGML_ASSERT(nb0 == sizeof(float));
-    GGML_ASSERT(nb0 <= nb1);
-    GGML_ASSERT(nb1 <= nb2);
-    GGML_ASSERT(nb2 <= nb3);
-
-    GGML_ASSERT(ne02 == 1);
-    GGML_ASSERT(ne03 == 1);
-//    GGML_ASSERT(ne12 == 1);
-    GGML_ASSERT(ne13 == 1);
 
     if (params->type == GGML_TASK_TYPE_INIT) {
         if (src1->type != vec_dot_type) {
@@ -10764,17 +10743,15 @@ static void ggml_compute_forward_mul_mat(
 
     const void *wdata = params->wdata;
     const size_t row_size = ggml_row_size(vec_dot_type, ne10);
-
     const int64_t blck = 16;
-
     static float tmp[32];
 
 // nb1
 // nb2
 // nb3
-// src0->data
-// dst->data
-// wdata: src1->data after preprocessing
+// src0: src0->data
+// src1: wdata = src1->data after preprocessing
+// dst: dst->data
 
     for (int64_t iir1 = 0; iir1 < ne11 * ne12; iir1 += blck) {
         for (int64_t iir0 = 0; iir0 < ne01; iir0 += blck) {
@@ -10807,6 +10784,7 @@ static void ggml_compute_forward_mul_mat(
             }
         }
     }
+
 }
 
 // ggml_compute_forward_mul_mat_id
