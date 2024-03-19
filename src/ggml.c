@@ -10743,44 +10743,29 @@ static void ggml_compute_forward_mul_mat(
 
     const void *wdata = params->wdata;
     const size_t row_size = ggml_row_size(vec_dot_type, ne10);
-    const int64_t blck = 16;
+    const int64_t block = 16;
     static float tmp[32];
+    // the edges with the same length in mul mat called as name:
+    const int64_t shared_edge = ne00;
 
-// nb1
-// nb2
-// nb3
-// src0: src0->data
-// src1: wdata = src1->data after preprocessing
-// dst: dst->data
+    for (int64_t col1_i = 0; col1_i < ne11 * ne12; col1_i += block) { // every col of src1 matrix, block by block
+        for (int64_t row0_i = 0; row0_i < ne01; row0_i += block) { // every row of src0 matrix, block by block
+            for (int64_t col_i = col1_i; col_i < col1_i + block && col_i < ne11 * ne12; col_i += 1) { // every col of dst matrix
+                const int64_t mat_i = col_i / ne1; // index of matrix slice (col)
+                const int64_t mat_col_i = col_i % ne1; // index of col in matrix slice
 
-    for (int64_t iir1 = 0; iir1 < ne11 * ne12; iir1 += blck) {
-        for (int64_t iir0 = 0; iir0 < ne01; iir0 += blck) {
-            for (int64_t ir1 = iir1; ir1 < iir1 + blck && ir1 < ne11 * ne12; ir1 += 1) {
-                const int64_t i13 = ir1 / (ne11 * ne12);
-                const int64_t i12 = (ir1 - i13 * ne11 * ne12) / ne11;
-                const int64_t i11 = (ir1 - (i13 * ne12 + i12) * ne11);
+                const char *src0_row = (const char *) src0->data;
+                const char *src1_col = (const char *) wdata + col_i * row_size;
+                float *dst_col = (float *) ((char *) dst->data + (mat_col_i * nb1 + mat_i * nb2));
 
-                // broadcast src0 into src1
-                const int64_t i02 = i12 / ne12;
-
-                const char *src0_row = (const char *) src0->data + (0 + i02 * nb02 + i13 * nb03);
-
-                // desc: when src1 is not a contiguous memory block we have to calculate the offset using the strides
-                //       if it is, then we have either copied the data to params->wdata and made it contiguous or we are using
-                //       the original src1 data pointer, so we should index using the indices directly
-                // TODO: this is a bit of a hack, we should probably have a better way to handle this
-                const char *src1_col = (const char *) wdata + (i11 + i12 * ne11 + i13 * ne12 * ne11) * row_size;
-                float *dst_col = (float *) ((char *) dst->data + (i11 * nb1 + i12 * nb2 + i13 * nb3));
-
-                for (int64_t ir0 = iir0; ir0 < iir0 + blck && ir0 < ne01; ir0 += 1) {
-                    vec_dot(ne00, &tmp[ir0 - iir0], 0, src0_row + ir0 * nb01, 0,
+                for (int64_t row0 = row0_i; row0 < row0_i + block && row0 < ne01; row0 += 1) { // iterate over rows of src0 matrix in the block
+                    const int64_t row_in_block = row0 - row0_i;
+                    vec_dot(shared_edge, &tmp[row_in_block], 0, src0_row + row0 * nb01, 0,
                             src1_col, 0, 1);
                 }
 
-                for (int cn = 0; cn < 1; ++cn) {
-                    memcpy(&dst_col[iir0 + cn * nb1 / nb0], tmp + (cn * 16),
-                           (MIN(iir0 + blck, ne01) - iir0) * sizeof(float));
-                }
+                memcpy(&dst_col[row0_i], tmp,
+                           (MIN(row0_i + block, ne01) - row0_i) * sizeof(float));
             }
         }
     }
