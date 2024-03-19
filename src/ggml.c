@@ -10744,7 +10744,7 @@ static void ggml_compute_forward_mul_mat(
     const void *wdata = params->wdata;
     const size_t row_size = ggml_row_size(vec_dot_type, ne10);
     const int64_t block = 16;
-    static float tmp[32];
+//    static float tmp[32];
     // the edges with the same length in mul mat called as name:
     const int64_t shared_edge = ne00;
 
@@ -10759,13 +10759,9 @@ static void ggml_compute_forward_mul_mat(
                 float *dst_col = (float *) ((char *) dst->data + (mat_col_i * nb1 + mat_i * nb2));
 
                 for (int64_t row0 = row0_i; row0 < row0_i + block && row0 < ne01; row0 += 1) { // iterate over rows of src0 matrix in the block
-                    const int64_t row_in_block = row0 - row0_i;
-                    vec_dot(shared_edge, &tmp[row_in_block], 0, src0_row + row0 * nb01, 0,
+                    vec_dot(shared_edge, &dst_col[row0], 0, src0_row + row0 * nb01, 0,
                             src1_col, 0, 1);
                 }
-
-                memcpy(&dst_col[row0_i], tmp,
-                           (MIN(row0_i + block, ne01) - row0_i) * sizeof(float));
             }
         }
     }
