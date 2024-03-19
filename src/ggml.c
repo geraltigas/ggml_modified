@@ -26,6 +26,7 @@
 #include <stdarg.h>
 #include <signal.h>
 #include <profiling.h>
+#include <hpc.h>
 
 #if defined(__gnu_linux__)
 
@@ -10748,23 +10749,25 @@ static void ggml_compute_forward_mul_mat(
     // the edges with the same length in mul mat called as name:
     const int64_t shared_edge = ne00;
 
-    for (int64_t col1_i = 0; col1_i < ne11 * ne12; col1_i += block) { // every col of src1 matrix, block by block
-        for (int64_t row0_i = 0; row0_i < ne01; row0_i += block) { // every row of src0 matrix, block by block
-            for (int64_t col_i = col1_i; col_i < col1_i + block && col_i < ne11 * ne12; col_i += 1) { // every col of dst matrix
-                const int64_t mat_i = col_i / ne1; // index of matrix slice (col)
-                const int64_t mat_col_i = col_i % ne1; // index of col in matrix slice
+    mul_mat(block,ne01,ne11,ne12,nb01,ne1,nb1,nb2,row_size,shared_edge,src0->data,wdata,dst->data, vec_dot);
 
-                const char *src0_row = (const char *) src0->data;
-                const char *src1_col = (const char *) wdata + col_i * row_size;
-                float *dst_col = (float *) ((char *) dst->data + (mat_col_i * nb1 + mat_i * nb2));
-
-                for (int64_t row0 = row0_i; row0 < row0_i + block && row0 < ne01; row0 += 1) { // iterate over rows of src0 matrix in the block
-                    vec_dot(shared_edge, &dst_col[row0], 0, src0_row + row0 * nb01, 0,
-                            src1_col, 0, 1);
-                }
-            }
-        }
-    }
+//    for (int64_t col1_i = 0; col1_i < ne11 * ne12; col1_i += block) { // every col of src1 matrix, block by block
+//        for (int64_t row0_i = 0; row0_i < ne01; row0_i += block) { // every row of src0 matrix, block by block
+//            for (int64_t col_i = col1_i; col_i < col1_i + block && col_i < ne11 * ne12; col_i += 1) { // every col of dst matrix
+//                const int64_t mat_i = col_i / ne1; // index of matrix slice (col)
+//                const int64_t mat_col_i = col_i % ne1; // index of col in matrix slice
+//
+//                const char *src0_row = (const char *) src0->data;
+//                const char *src1_col = (const char *) wdata + col_i * row_size;
+//                float *dst_col = (float *) ((char *) dst->data + (mat_col_i * nb1 + mat_i * nb2));
+//
+//                for (int64_t row0 = row0_i; row0 < row0_i + block && row0 < ne01; row0 += 1) { // iterate over rows of src0 matrix in the block
+//                    vec_dot(shared_edge, &dst_col[row0], 0, src0_row + row0 * nb01, 0,
+//                            src1_col, 0, 1);
+//                }
+//            }
+//        }
+//    }
 
 }
 
