@@ -10744,12 +10744,12 @@ static void ggml_compute_forward_mul_mat(
 
     const void *wdata = params->wdata;
     const size_t row_size = ggml_row_size(vec_dot_type, ne10);
-    const int64_t block = 16;
+
 //    static float tmp[32];
     // the edges with the same length in mul mat called as name:
     const int64_t shared_edge = ne00;
 
-    mul_mat(block,ne01,ne11,ne12,nb01,ne1,nb1,nb2,row_size,shared_edge,src0->data,wdata,dst->data, vec_dot);
+    mul_mat(ne01,ne11,ne12,nb01,ne1,nb1,nb2,row_size,shared_edge,src0->data,wdata,dst->data, vec_dot);
 
 //    for (int64_t col1_i = 0; col1_i < ne11 * ne12; col1_i += block) { // every col of src1 matrix, block by block
 //        for (int64_t row0_i = 0; row0_i < ne01; row0_i += block) { // every row of src0 matrix, block by block
