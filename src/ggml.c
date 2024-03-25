@@ -10718,6 +10718,7 @@ static void ggml_compute_forward_mul_mat(
 
     const enum ggml_type type = src0->type;
     ggml_vec_dot_t const vec_dot = type_traits[type].vec_dot;
+//    GGML_ASSERT(type == GGML_TYPE_Q4_K || type == GGML_TYPE_Q8_K || type == GGML_TYPE_Q6_K || type == GGML_TYPE_F32);
     enum ggml_type const vec_dot_type = type_traits[type].vec_dot_type;
     ggml_from_float_t const from_float_to_vec_dot = type_traits[vec_dot_type].from_float;
 
@@ -10742,6 +10743,9 @@ static void ggml_compute_forward_mul_mat(
         return;
     }
 
+//    GGML_ASSERT(type == GGML_TYPE_Q4_K || type == GGML_TYPE_Q6_K || type == GGML_TYPE_F32);
+//    GGML_ASSERT(src1->type == GGML_TYPE_F32);
+
     const void *wdata = params->wdata;
     const size_t row_size = ggml_row_size(vec_dot_type, ne10);
 
@@ -10749,7 +10753,7 @@ static void ggml_compute_forward_mul_mat(
     // the edges with the same length in mul mat called as name:
     const int64_t shared_edge = ne00;
 
-    mul_mat(ne01,ne11,ne12,nb01,ne1,nb1,nb2,row_size,shared_edge,src0->data,wdata,dst->data, vec_dot);
+    mul_mat(ne01,ne11,ne12,nb01,ne1,nb1,nb2,row_size,shared_edge,src0,src1,dst, vec_dot,src0->type,wdata);
 
 //    for (int64_t col1_i = 0; col1_i < ne11 * ne12; col1_i += block) { // every col of src1 matrix, block by block
 //        for (int64_t row0_i = 0; row0_i < ne01; row0_i += block) { // every row of src0 matrix, block by block
